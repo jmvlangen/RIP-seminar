@@ -11,11 +11,137 @@ open tactic
 
 universes u v
 
-section connected
-variables {α: Type u} {β : Type v} {a : α} {b : β} {s s₁ s₂ : set α} {r r₁ r₂ : set β} {f : α → β}
-
+variables {α: Type u} {β : Type v}
 variables [topological_space α]
 variables [topological_space β]
+variables {a : α} {b : β}
+variables {s s₁ s₂ : set α} {r r₁ r₂ : set β}
+variables {f : α → β}
+
+--- Usefull lemma's about the inclusion map
+lemma image_preimage_subtype_val {s : set α} (t : set α) :
+  subtype.val '' (@subtype.val α s ⁻¹' t) = s ∩ t :=
+begin
+  rw [image_preimage_eq_inter_range, inter_comm, subtype_val_range],
+  exact set_of_mem,
+end
+
+lemma subtype_val_univ_eq (s : set α) : (subtype.val) '' (@univ s) = s :=
+calc
+  subtype.val '' (@univ s) = range subtype.val : image_univ
+                       ... = s                 : subtype_val_range
+
+lemma preimage_subtype_val_eq_univ (s : set α) : @univ s = (@subtype.val _ s) ⁻¹' s :=
+let lift := @subtype.val α s in
+calc
+  @univ s = lift ⁻¹' univ                      : by rw set.preimage_univ
+      ... = lift ⁻¹' (lift '' (lift ⁻¹' univ)) : by rw set.preimage_image_preimage
+      ... = lift ⁻¹' (s ∩ univ)                : by rw image_preimage_subtype_val
+      ... = lift ⁻¹' s                         : by rw inter_univ s
+
+lemma preimage_subtype_val_empty_iff {s : set α} (t : set α) :
+  @subtype.val α s ⁻¹' t = ∅ ↔ s ∩ t = ∅ :=
+by rw [←image_preimage_subtype_val, image_eq_empty]
+
+lemma preimage_subtype_val_ne_empty_iff {s : set α} (t : set α) :
+  @subtype.val α s ⁻¹' t ≠ ∅ ↔ s ∩ t ≠ ∅ :=
+not_iff_not_of_iff (preimage_subtype_val_empty_iff t)
+
+lemma mem_image_inter_iff {f : α → β} : (∃ x : α, x ∈ s ∩ (f ⁻¹' r)) ↔ ∃ y : β, y ∈ (f '' s) ∩ r :=
+iff.intro
+  (assume h : ∃ x, x ∈ s ∩ (f ⁻¹' r),
+   let ⟨x, _, _⟩ := h in
+   show ∃ y, y ∈ (f '' s) ∩ r, from ⟨f x, ⟨x, ‹x ∈ s›, rfl⟩, ‹x ∈ f ⁻¹' r›⟩)
+  (assume h : ∃ y, y ∈ (f '' s) ∩ r,
+   let ⟨y, _, _⟩ := h in
+   have ∃ x, x ∈ s ∧ f x = y, from ‹y ∈ f '' s›,
+   let ⟨x, _, _⟩ := this in
+   have x ∈ f ⁻¹' r, by rw [mem_preimage_eq, ‹f x = y›]; assumption,
+   show ∃ x, x ∈ s ∩ (f ⁻¹' r), from ⟨x, ‹x ∈ s›, ‹x ∈ f ⁻¹' r›⟩)
+
+lemma image_connected [continuous f] [is_connected s] : is_connected (f '' s) :=
+-- We take arbitrary sets U and V of β
+assume U : set β,
+assume V : set β,
+-- Assuming U is open we get that f ⁻¹' U is open
+assume _ : is_open U,
+have h₁ : is_open (f ⁻¹' U), from ‹continuous f› U ‹is_open U›,
+-- Assuming V is open we get that f ⁻¹' V is open
+assume _ : is_open V,
+have h₂ : is_open (f ⁻¹' V), from ‹continuous f› V ‹is_open V›,
+-- Assuming that (f '' s) ⊆ U ∪ V we get that s ⊆ (f ⁻¹' U) ∪ (f ⁻¹' V)
+assume _ : f '' s ⊆ U ∪ V,
+have h₃ : s ⊆ (f ⁻¹' U) ∪ (f ⁻¹' V),
+  by rw [←preimage_union, ←image_subset_iff]; assumption,
+-- Assuming (f '' s) ∩ U is non-empty we get that s ∩ (f ⁻¹' U) is non-empty
+assume h₄' : ∃ y : β, y ∈ (f '' s) ∩ U,
+have h₄ : ∃ x : α, x ∈ s ∩ (f ⁻¹' U), by rw mem_image_inter_iff; assumption,
+-- Assuming (f '' s) ∩ V is non-empty we get that s ∩ (f ⁻¹' V) is non-empty
+assume _ : ∃ y : β, y ∈ (f '' s) ∩ V,
+have h₅ : ∃ x : α, x ∈ s ∩ (f ⁻¹' V), by rw mem_image_inter_iff; assumption,
+-- Applying connectedness of s to f ⁻¹' U and f ⁻¹' V with our assumptions
+-- tells us that s ∩ (f ⁻¹' U) ∩ (f ⁻¹' V) is non-empty
+have ∃ x : α, x ∈ s ∩ ((f ⁻¹' U) ∩ (f ⁻¹' V)),
+  from ‹is_connected s› (f ⁻¹' U) (f ⁻¹' V) h₁ h₂ h₃ h₄ h₅,
+show ∃ y : β, y ∈ (f '' s) ∩ (U ∩ V),
+  begin
+    rw ←mem_image_inter_iff,
+    fapply exists_imp_exists,
+    exact λ x, x ∈ s ∩ ((f ⁻¹' U) ∩ (f ⁻¹' V)),
+    intros,
+    rw preimage_inter,
+    assumption,
+    assumption,
+  end
+-- This proves that f '' s is connected.
+
+set_option eqn_compiler.zeta true
+
+instance connected_subset [is_connected s] : connected_space s :=
+⟨let lift := @subtype.val _ s in
+ -- Start with arbitrary subsets of s
+ assume U : set s,
+ assume V : set s,
+ -- We have an open set U' containing U if U is open in s
+ assume _ : is_open U,
+ have ∃ U' : set α, is_open U' ∧ U = lift ⁻¹' U', from ‹is_open U›,
+ let ⟨U', h₁, _⟩ := this in
+ -- We have an open set V' containing V if V is open in s
+ assume _ : is_open V,
+ have ∃ V' : set α, is_open V' ∧ V = lift ⁻¹' V', from ‹is_open V›,
+ let ⟨V', h₂, _⟩ := this in
+ -- Assuming the universe of s is contained in the union of U and V,
+ -- s will be contained in the union of U' and V'
+ assume _ : univ ⊆ U ∪ V,
+ have h₃ : s ⊆ U' ∪ V',
+   by rw [←(subtype_val_univ_eq s), image_subset_iff, preimage_union,
+          ←‹U = lift ⁻¹' U'›, ←‹V = lift ⁻¹' V'›]; assumption,
+ -- Assuming that U is non-empty we get that U' intersected s is non-empty
+ assume _ :∃ x, x ∈ univ ∩ U,
+ have h₄ : ∃ y, y ∈ s ∩ U',
+   by rw [←(subtype_val_univ_eq s), ←mem_image_inter_iff, ←‹U = lift ⁻¹' U'›]; assumption,
+ -- Assuming that V is non-empty we get that V' intersected s is non-empty
+ assume _ : ∃ x, x ∈ univ ∩ V,
+ have h₅ : ∃ y, y ∈ s ∩ V',
+   by rw [←(subtype_val_univ_eq s), ←mem_image_inter_iff, ←‹V = lift ⁻¹' V'›]; assumption,
+ -- We can now deduce that there is an element in s ∩ (U' ∩ V')
+ -- which in turn gives an element of univ ∩ (U ∩ V)
+ have ∃ y, y ∈ s ∩ (U' ∩ V'), from ‹is_connected s› U' V' h₁ h₂ h₃ h₄ h₅,
+ show ∃ x, x ∈ univ ∩ (U ∩ V),
+   by rw [‹U = lift ⁻¹' U'›, ‹V = lift ⁻¹' V'›, ←preimage_inter,
+          mem_image_inter_iff, subtype_val_univ_eq]; assumption⟩
+
+lemma connected_subspace_iff : connected_space s ↔ is_connected s :=
+let lift := @subtype.val _ s in
+iff.intro
+  (assume h : connected_space s,
+   have is_connected (@univ s), from h.is_connected_univ,
+   have is_connected (lift '' univ),
+     from @image_connected _ _ _ _ (@univ s) lift continuous_subtype_val ‹is_connected (@univ s)›,
+   show is_connected s, by rw ←(subtype_val_univ_eq s); assumption)
+  (@connected_subset _ _ s)
+
+section old_connected
 
 lemma preimage_empty_of_empty {f : α → β} {r : set β} (hf : surjective f): f⁻¹' r = ∅ → r = ∅ :=
 suffices (∀a, a ∉ f ⁻¹' r) → ∀b, b ∉ r,
@@ -53,13 +179,13 @@ have he2 : -s₁ = s₂, from eq.symm (sep_neg (sep_symm h)),
 
 
 --Connected topological spaces
-class connected_space (α) [topological_space α] : Prop :=
+class connected_space' (α) [topological_space α] : Prop :=
 (connected : ¬∃ s₁ s₂ : set α, separation s₁ s₂)
 
 /-- The image of a connected space under a surjective map is connected. -/
-theorem im_connected {f : α → β} [connected_space α]
-  (_ : continuous f) (_ : surjective f) : connected_space β :=
-connected_space.mk $
+theorem im_connected {f : α → β} [connected_space' α]
+  (_ : continuous f) (_ : surjective f) : connected_space' β :=
+connected_space'.mk $
 -- a space is connected if there exists no separation, so we assume there is one and derive false
 -- we do this by constructing a 'preimage separation'
 assume _ : ∃ r₁ r₂ : set β, separation r₁ r₂,
@@ -77,37 +203,8 @@ assume _ : ∃ r₁ r₂ : set β, separation r₁ r₂,
   -- with this preparation at hand, we construct a separation
   have separation s₁ s₂, from ⟨‹is_open s₁›, ‹is_open s₂›, ‹s₁ ≠ ∅›, ‹s₂ ≠ ∅›, ‹s₁ ∩ s₂ = ∅›, ‹s₁ ∪ s₂ = univ›⟩,
   -- which contradicts the fact that α is connected
-  show false, from connected_space.connected α
+  show false, from connected_space'.connected α
     ⟨s₁, s₂, ‹separation s₁ s₂›⟩
-
---- Usefull lemma's about the inclusion map
-lemma image_preimage_subtype_val {s : set α} (t : set α) :
-  subtype.val '' (@subtype.val α s ⁻¹' t) = s ∩ t :=
-begin
-  rw [image_preimage_eq_inter_range, inter_comm, subtype_val_range],
-  exact set_of_mem,
-end
-
-lemma subtype_val_univ_eq (s : set α) : (subtype.val) '' (@univ s) = s :=
-calc
-  subtype.val '' (@univ s) = range subtype.val : image_univ
-                       ... = s                 : subtype_val_range
-
-lemma preimage_subtype_val_eq_univ (s : set α) : @univ s = (@subtype.val _ s) ⁻¹' s :=
-let lift := @subtype.val α s in
-calc
-  @univ s = lift ⁻¹' univ                      : by rw set.preimage_univ
-      ... = lift ⁻¹' (lift '' (lift ⁻¹' univ)) : by rw set.preimage_image_preimage
-      ... = lift ⁻¹' (s ∩ univ)                : by rw image_preimage_subtype_val
-      ... = lift ⁻¹' s                         : by rw inter_univ s
-
-lemma preimage_subtype_val_empty_iff {s : set α} (t : set α) :
-  @subtype.val α s ⁻¹' t = ∅ ↔ s ∩ t = ∅ :=
-by rw [←image_preimage_subtype_val, image_eq_empty]
-
-lemma preimage_subtype_val_ne_empty_iff {s : set α} (t : set α) :
-  @subtype.val α s ⁻¹' t ≠ ∅ ↔ s ∩ t ≠ ∅ :=
-not_iff_not_of_iff (preimage_subtype_val_empty_iff t)
 
 --Separations of a subset of a topological space
 def subset_separation [topological_space α] (s s₁ s₂ : set α) : Prop :=
@@ -172,17 +269,17 @@ show ∃s₁' s₂' : set α, subset_separation s s₁' s₂',
 def disconnected_subset (s : set α) : Prop :=
 ∃s₁ s₂ : set α, subset_separation s s₁ s₂
 
-def connected_subset (s : set α) : Prop :=
+def connected_subset' (s : set α) : Prop :=
 ¬(disconnected_subset s)
 
-lemma connected_space_iff : connected_space α ↔ ¬∃ s₁ s₂ : set α, separation s₁ s₂ :=
+lemma connected_space_iff : connected_space' α ↔ ¬∃ s₁ s₂ : set α, separation s₁ s₂ :=
 begin
   constructor,
-  apply connected_space.connected,
-  apply connected_space.mk
+  apply connected_space'.connected,
+  apply connected_space'.mk
 end
 
-theorem subtype_connected_iff_subset_connected {s : set α} : connected_space s ↔ connected_subset s :=
+theorem subtype_connected_iff_subset_connected {s : set α} : connected_space' s ↔ connected_subset' s :=
 suffices h₀ : (∃ s₁ s₂ : set s, separation s₁ s₂) ↔ disconnected_subset s,
   by rw connected_space_iff; apply not_iff_not_of_iff; assumption,
 let lift := @subtype.val α s in
@@ -197,5 +294,5 @@ iff.intro
      from ⟨lift ⁻¹' s₁, lift ⁻¹' s₂, sep_of_subset_sep h₁⟩
   )
 
-end connected
+end old_connected
 
