@@ -1,5 +1,5 @@
 import algebra.field algebra.ring
-import analysis.normed_space
+import analysis.normed_space analysis.ennreal
 import analysis.topology.infinite_sum
 import analysis.complex
 
@@ -38,8 +38,9 @@ has_sum (λ n : ℕ , s n * x ^ n)
 /--
  - The supremum of {r : ℝ | ∀ x, ∥x∥ < r → converges s x}.
  -/
-noncomputable def convergence_radius (s : formal_power_series R) (x₀ : R) : ℝ :=
-Sup {r : ℝ | ∀ x : R, ∥x∥ < r → converges_at (x - x₀) s}
+noncomputable def convergence_radius (s : formal_power_series R) (x₀ : R) : ennreal :=
+Sup {r : ennreal | ∀ x : R, ↑(nnnorm (x - x₀)) < r → converges_at (x - x₀) s}
+
 
 /--
  - A power series is a formal power series that converges in some 
