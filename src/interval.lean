@@ -303,7 +303,7 @@ subset_separation_left_inter_closed (subset_sep_symm sep) ‹is_closed c› ‹c
 set_option eqn_compiler.zeta true
 
 -- An convex subset of ℝ is connected in the subspace topology
-instance connected_of_interval {i : set ℝ} (_ : interval i) : connected_space i :=
+instance connected_of_interval {i : set ℝ} (_ : interval i) : connected_space' i :=
 subtype_connected_iff_subset_connected.mpr $
 -- assume that i is not connected, then there exists a separation
 assume _ : disconnected_subset i,
@@ -381,7 +381,7 @@ assume _ : disconnected_subset i,
 
 
 
-theorem interval_of_connected {i : set ℝ} [connected_space i] : interval i :=
+theorem interval_of_connected {i : set ℝ} [connected_space' i] : interval i :=
 by intros x y z _ _ _ _;
 exact
   classical.by_cases
@@ -408,8 +408,8 @@ exact
     have Iio y ∩ i ≠ ∅, from ne_empty_of_mem (mem_inter ‹x < y› ‹x ∈ i›),
     have Ioi y ∩ i ≠ ∅, from ne_empty_of_mem (mem_inter ‹y < z› ‹z ∈ i›),
     have disconnected_subset i, from ⟨Iio y, Ioi y, is_open_Iio, is_open_Ioi, ‹Iio y ∩ i ≠ ∅›, ‹Ioi y ∩ i ≠ ∅›, ‹Iio y ∩ Ioi y ∩ i = ∅›, ‹i ⊆ Iio y ∪ Ioi y›⟩,
-    have ¬connected_space i, by simpa [subtype_connected_iff_subset_connected],
-    this ‹connected_space i›))
+    have ¬connected_space' i, by simpa [subtype_connected_iff_subset_connected],
+    this ‹connected_space' i›))
 
 
 end real
