@@ -3,7 +3,6 @@ import analysis.topology.continuity
 import analysis.topology.topological_structures
 import data.set.basic
 import analysis.real
-import tactic.wlog
 
 open set
 open function
@@ -53,11 +52,16 @@ have he2 : -s₁ = s₂, from eq.symm (sep_neg (sep_symm h)),
 
 
 --Connected topological spaces
-class connected_space (α) [topological_space α] : Prop :=
-(connected : ¬∃ s₁ s₂ : set α, separation s₁ s₂)
+--class connected_space (α) [topological_space α] : Prop :=
+--(connected : ¬∃ s₁ s₂ : set α, separation s₁ s₂)
+
+theorem is_connected_image {f : α → β} [connected_space α] (_ : continuous f) : is_connected (f '' univ) :=
+assume u v hu hv hcsuv ⟨y, hycs, hyu⟩ ⟨z, hzcs, hzv⟩,
+sorry
+
 
 /-- The image of a connected space under a surjective map is connected. -/
-theorem im_connected {f : α → β} [connected_space α]
+/-theorem im_connected {f : α → β} [connected_space α]
   (_ : continuous f) (_ : surjective f) : connected_space β :=
 connected_space.mk $
 -- a space is connected if there exists no separation, so we assume there is one and derive false
@@ -195,7 +199,7 @@ iff.intro
    let ⟨s₁, s₂, h₁⟩ := h in
    show ∃ s₁ s₂ : set s, separation s₁ s₂,
      from ⟨lift ⁻¹' s₁, lift ⁻¹' s₂, sep_of_subset_sep h₁⟩
-  )
+  )-/
 
 end connected
 
