@@ -33,7 +33,7 @@ open lattice topological_space
  - A predicate that indicates if the formal power series s converges at a point x ∈ R.
  -/
 def converges_at (x : R) (s : formal_power_series R) : Prop :=
-has_sum (λ n : ℕ , s n * x ^ n)
+has_sum (λ n : ℕ , s n * x ^ n) -- has_sum means absolute convergence of the series at x
 
 /--
  - The supremum of {r : ℝ | ∀ x, ∥x∥ < r → converges s x}.
