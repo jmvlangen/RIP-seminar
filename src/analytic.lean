@@ -43,21 +43,22 @@ Sup {r : ennreal | ∀ x : R, ↑(nnnorm (x - x₀)) < r → converges_at (x - x
 
 
 /--
- - A power series is a formal power series that converges in some 
+ - A power series is the function associated with a formal power series by taking infinite sums. I may or may not converge.
  -/
-structure power_series (R : Type*) [ring R] [normed_ring R] :=
-(to_fps : formal_power_series R)
-(x₀ : R)
-(r : ℝ)
-(converges : r ≤ convergence_radius to_fps x₀ ∧ r > 0)
+noncomputable def power_series (s : formal_power_series R) : R → option R :=
+begin
+  haveI := classical.prop_decidable,
+  exact λ x, if h : (converges_at x s) then some (classical.some h) else none
+end
 
 /--
  - A function f defined on an open subset of R is analytic if it can
  - locally be written as a convergent power series.
  -
+ - This definition is not done yet.
  -/
 class is_analytic (U : opens R) (f : U → R) : Prop :=
-(prop : ∀ x ∈ U, ∃ s : power_series R, ∥x - s.x₀∥ < s.r)
+(prop : ∀ x ∈ U,  ∃ (s : formal_power_series R) (x₀ : R), convergence_radius s x₀ > 0 ∧ ↑(nnnorm (x - x₀)) ≤ convergence_radius s x₀ ∧  some (f ⟨x, ‹x ∈ U›⟩) = power_series s (x - x₀) )
 
 structure analytic_function (U : opens R) :=
 (to_fun : U → R)
