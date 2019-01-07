@@ -13,7 +13,9 @@ import analysis.complex
  - series is a sequence in R. The point of writing them as series is that this
  - specifies natural operations on them.
  -/
-def formal_power_series (R : Type*) [ring R] : Type* := ℕ → R
+def formal_power_series (R : Type*) : Type* := ℕ → R
+
+namespace formal_power_series
 
 -- TODO: introduce some notation, figure out how to avoid conflicts with notation for
 -- infinite sums and convergent power series.
@@ -24,7 +26,6 @@ def formal_power_series (R : Type*) [ring R] : Type* := ℕ → R
  -/
 def formal_derivative {R : Type*} [ring R] : formal_power_series R → formal_power_series R := sorry
 
-
 variable {R : Type*}
 variables [normed_ring R]
 open lattice topological_space
@@ -32,7 +33,13 @@ open lattice topological_space
 /--
  - A predicate that indicates if the formal power series s converges at a point x ∈ R.
  -/
-def converges_at (x : R) (s : formal_power_series R) : Prop :=
+def converges_at_to (s : formal_power_series R) (x : R) (y : R) : Prop :=
+is_sum (λ n : ℕ , s n * x ^ n) y -- is_sum means absolute convergence of the series at x
+
+def converges_to_at (s : formal_power_series R) (y : R) (x : R) : Prop :=
+is_sum (λ n : ℕ , s n * x ^ n) y -- is_sum means absolute convergence of the series at x
+
+def converges_at (s : formal_power_series R) (x : R) : Prop :=
 has_sum (λ n : ℕ , s n * x ^ n) -- has_sum means absolute convergence of the series at x
 
 /--
@@ -45,11 +52,18 @@ Sup {r : ennreal | ∀ x : R, ↑(nnnorm (x - x₀)) < r → converges_at (x - x
 /--
  - A power series is the function associated with a formal power series by taking infinite sums. I may or may not converge.
  -/
-noncomputable def power_series (s : formal_power_series R) : R → option R :=
-begin
-  haveI := classical.prop_decidable,
-  exact λ x, if h : (converges_at x s) then some (classical.some h) else none
-end
+noncomputable def at_point (s : formal_power_series R) (x : R) :=
+∑ n : ℕ , s n * x ^ n
+
+-- noncomputable instance : has_coe_to_fun (formal_power_series R) :=
+-- ⟨λ _, R → R,
+--   λ s x, s.at_point x⟩
+
+end formal_power_series
+
+variable {R : Type*}
+variables [normed_ring R]
+open lattice topological_space
 
 /--
  - A function f defined on an open subset of R is analytic if it can
@@ -57,8 +71,17 @@ end
  -
  - This definition is not done yet.
  -/
-class is_analytic (U : opens R) (f : U → R) : Prop :=
-(prop : ∀ x ∈ U,  ∃ (s : formal_power_series R) (x₀ : R), convergence_radius s x₀ > 0 ∧ ↑(nnnorm (x - x₀)) ≤ convergence_radius s x₀ ∧  some (f ⟨x, ‹x ∈ U›⟩) = power_series s (x - x₀) )
+def is_analytic_at (x₀ : R) (f : R → R) : Prop :=
+∃ (s : formal_power_series R) (r > 0), ∀ x : R, norm(x - x₀) < r → s.converges_at_to (x - x₀) (f x)
+
+#print is_analytic_at.
+
+def is_analytic_on (U : set R) (f : R → R) : Prop :=
+∀ x ∈ U, is_analytic_at x f
+
+
+-- class is_analytic (U : opens R) (f : U → R) : Prop :=
+-- (prop : ∀ x ∈ U,  ∃ (s : formal_power_series R) (x₀ : R), convergence_radius s x₀ > 0 ∧ ↑(nnnorm (x - x₀)) < convergence_radius s x₀ ∧  some (f ⟨x, ‹x ∈ U›⟩) = power_series s (x - x₀) )
 
 structure analytic_function (U : opens R) :=
 (to_fun : U → R)
